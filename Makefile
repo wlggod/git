@@ -870,9 +870,7 @@ TEST_BUILTINS_OBJS += test-xml-encode.o
 # Do not add more tests here unless they have extra dependencies. Add
 # them in TEST_BUILTINS_OBJS above.
 TEST_PROGRAMS_NEED_X += test-fake-ssh
-TEST_PROGRAMS_NEED_X += test-tool
-
-TEST_PROGRAMS = $(patsubst %,t/helper/%$X,$(TEST_PROGRAMS_NEED_X))
+TEST_PROGRAMS_NEED_X += $(info tpnxnpg=$(NO_POSIX_GOODIES))test-tool
 
 # List built-in command $C whose implementation cmd_$C() is not in
 # builtin/$C.o but is linked in as part of some other command.
@@ -2677,6 +2675,16 @@ REFTABLE_TEST_OBJS += reftable/stack_test.o
 REFTABLE_TEST_OBJS += reftable/test_framework.o
 REFTABLE_TEST_OBJS += reftable/tree_test.o
 
+ifndef NO_POSIX_GOODIES
+TEST_PROGRAMS_NEED_X += test-stdlib
+MY_VAR = not_else
+$(info insideifndefnpg=$(NO_POSIX_GOODIES))
+else
+MY_VAR = else
+endif
+
+TEST_PROGRAMS = $(info tptpnx=$(TEST_PROGRAMS_NEED_X) myvar=$(MY_VAR))$(patsubst %,t/helper/%$X,$(TEST_PROGRAMS_NEED_X))
+
 TEST_OBJS := $(patsubst %$X,%.o,$(TEST_PROGRAMS)) $(patsubst %,t/helper/%,$(TEST_BUILTINS_OBJS))
 
 .PHONY: test-objs
@@ -3203,7 +3211,11 @@ GIT-PYTHON-VARS: FORCE
             fi
 endif
 
-test_bindir_programs := $(patsubst %,bin-wrappers/%,$(BINDIR_PROGRAMS_NEED_X) $(BINDIR_PROGRAMS_NO_X) $(TEST_PROGRAMS_NEED_X))
+test_bindir_programs := $(info tbptpnx=$(TEST_PROGRAMS_NEED_X))$(patsubst %,bin-wrappers/%,$(BINDIR_PROGRAMS_NEED_X) $(BINDIR_PROGRAMS_NO_X) $(TEST_PROGRAMS_NEED_X))
+
+t/helper/test-stdlib$X: t/helper/test-stdlib.o GIT-LDFLAGS $(STD_LIB_FILE) $(STUB_LIB_FILE) $(GITLIBS)
+	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) \
+		$< $(STD_LIB_FILE) $(STUB_LIB_FILE) $(EXTLIBS)
 
 all:: $(TEST_PROGRAMS) $(test_bindir_programs) $(UNIT_TEST_PROGS)
 
@@ -3634,7 +3646,8 @@ ifneq ($(INCLUDE_DLLS_IN_ARTIFACTS),)
 OTHER_PROGRAMS += $(shell echo *.dll t/helper/*.dll t/unit-tests/bin/*.dll)
 endif
 
-artifacts-tar:: $(ALL_COMMANDS_TO_INSTALL) $(SCRIPT_LIB) $(OTHER_PROGRAMS) \
+# Added an info for debugging
+artifacts-tar:: $(info npg=$(NO_POSIX_GOODIES) cc=$(COMPAT_CFLAGS) tp=$(TEST_PROGRAMS))$(ALL_COMMANDS_TO_INSTALL) $(SCRIPT_LIB) $(OTHER_PROGRAMS) \
 		GIT-BUILD-OPTIONS $(TEST_PROGRAMS) $(test_bindir_programs) \
 		$(UNIT_TEST_PROGS) $(MOFILES)
 	$(QUIET_SUBDIR0)templates $(QUIET_SUBDIR1) \
