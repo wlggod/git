@@ -1247,12 +1247,14 @@ static int merge_submodule(struct merge_options *opt,
 	ret2 = repo_in_merge_bases(&subrepo, commit_base, commit_a);
 	if (ret2 < 0) {
 		output(opt, 1, _("Failed to merge submodule %s (repository corrupt)"), path);
+		ret = -1;
 		goto cleanup;
 	}
 	if (ret2 > 0)
 		ret2 = repo_in_merge_bases(&subrepo, commit_base, commit_b);
 	if (ret2 < 0) {
 		output(opt, 1, _("Failed to merge submodule %s (repository corrupt)"), path);
+		ret = -1;
 		goto cleanup;
 	}
 	if (!ret2) {
@@ -1264,6 +1266,7 @@ static int merge_submodule(struct merge_options *opt,
 	ret2 = repo_in_merge_bases(&subrepo, commit_a, commit_b);
 	if (ret2 < 0) {
 		output(opt, 1, _("Failed to merge submodule %s (repository corrupt)"), path);
+		ret = -1;
 		goto cleanup;
 	}
 	if (ret2) {
@@ -1282,6 +1285,7 @@ static int merge_submodule(struct merge_options *opt,
 	ret2 = repo_in_merge_bases(&subrepo, commit_b, commit_a);
 	if (ret2 < 0) {
 		output(opt, 1, _("Failed to merge submodule %s (repository corrupt)"), path);
+		ret = -1;
 		goto cleanup;
 	}
 	if (ret2) {
@@ -1313,6 +1317,10 @@ static int merge_submodule(struct merge_options *opt,
 	parent_count = find_first_merges(&subrepo, &merges, path,
 					 commit_a, commit_b);
 	switch (parent_count) {
+	case -1:
+		output(opt, 1,_("Failed to merge submodule %s (repository corrupt)"), path);
+		ret = -1;
+		break;
 	case 0:
 		output(opt, 1, _("Failed to merge submodule %s (merge following commits not found)"), path);
 		break;
@@ -1427,13 +1435,14 @@ static int merge_mode_and_contents(struct merge_options *opt,
 			/* FIXME: bug, what if modes didn't match? */
 			result->clean = (merge_status == 0);
 		} else if (S_ISGITLINK(a->mode)) {
-			result->clean = merge_submodule(opt, &result->blob.oid,
-							o->path,
-							&o->oid,
-							&a->oid,
-							&b->oid);
-			if (result->clean < 0)
+			int clean = merge_submodule(opt, &result->blob.oid,
+						    o->path,
+						    &o->oid,
+						    &a->oid,
+						    &b->oid);
+			if (clean < 0)
 				return -1;
+			result->clean = clean;
 		} else if (S_ISLNK(a->mode)) {
 			switch (opt->recursive_variant) {
 			case MERGE_VARIANT_NORMAL:
